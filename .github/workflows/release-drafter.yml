@@ -6,27 +6,29 @@ on:
       - RB-*
 
 jobs:
-    update_release_draft:
-      permissions:
-        contents: write
-        pull-requests: write
-      runs-on: ubuntu-latest
-      steps:
-        - uses: actions/checkout@v2
+  update_release_draft:
+    permissions:
+      contents: write
+      pull-requests: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
 
-        - name: Extract version from branch name
-          id: extract_version
-          run: |
-            BRANCH_NAME=${GITHUB_REF#refs/heads/}
-            VERSION=${BRANCH_NAME#RB-}
-            echo "RELEASE_VERSION=$VERSION" >> $GITHUB_ENV
-            echo "version=$VERSION" >> $GITHUB_OUTPUT
-        - uses: release-drafter/release-drafter@v5
-          with:
-            name: ${{ steps.extract_version.outputs.version }}
-            tag: v${{ steps.extract_version.outputs.version }}
-            version: ${{ steps.extract_version.outputs.version }}
-            config-name: release-drafter-config.yml
-            disable-autolabeler: true
-          env:
-            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Extract version from branch name
+        id: extract_version
+        run: |
+          BRANCH_NAME=${GITHUB_REF#refs/heads/}
+          VERSION=${BRANCH_NAME#RB-}
+          echo "RELEASE_VERSION=$VERSION" >> $GITHUB_ENV
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - uses: release-drafter/release-drafter@v5
+        with:
+          name: ${{ steps.extract_version.outputs.version }}
+          tag: v${{ steps.extract_version.outputs.version }}
+          version: ${{ steps.extract_version.outputs.version }}
+          commitish: ${{ github.ref_name }}  # 각 브랜치의 commitish를 사용
+          config-name: release-drafter-config.yml
+          disable-autolabeler: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
