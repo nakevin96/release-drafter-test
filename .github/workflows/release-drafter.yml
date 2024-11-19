@@ -26,5 +26,6 @@ jobs:
             name: ${{ steps.extract_version.outputs.version }}
             tag: v${{ steps.extract_version.outputs.version }}
             version: ${{ steps.extract_version.outputs.version }}
+            config-name: release-drafter-config.yml
           env:
             GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
