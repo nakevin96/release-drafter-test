@@ -1,7 +1,12 @@
-name-template: 'v$RESOLVED_VERSION'
+name-template: '$RESOLVED_VERSION'
 tag-template: 'v$RESOLVED_VERSION'
-branches:
-  - 'RB-+([0-9])?(.{+([0-9]),x}).x'
+version-template: '$MAJOR.$MINOR.$PATCH'
+
+template: |
+  ## Changes for $RESOLVED_VERSION
+
+  $CHANGES
+
 categories:
   - title: '🚀 Features'
     labels:
@@ -12,7 +17,9 @@ categories:
       - 'fix'
       - 'bugfix'
       - 'bug'
-change-template: '- $TITLE @$AUTHOR (#$NUMBER)'
+
+change-template: '- $TITLE (#$NUMBER)'
+
 version-resolver:
   major:
     labels:
@@ -24,7 +31,3 @@ version-resolver:
     labels:
       - 'patch'
   default: minor
-template: |
-  ## Changes for $RESOLVED_VERSION
-
-  $CHANGES
