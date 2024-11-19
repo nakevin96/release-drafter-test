@@ -40,10 +40,7 @@ include-labels:
 
 references:
   - main
-  - RB-*
+  - 'RB-*'
 
 exclude-contributors:
   - 'dependabot'
-
-exclude-labels:
-  - 'skip-changelog'
