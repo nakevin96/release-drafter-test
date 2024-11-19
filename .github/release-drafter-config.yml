@@ -31,3 +31,19 @@ version-resolver:
     labels:
       - 'patch'
   default: minor
+
+exclude-labels:
+  - 'skip-changelog'
+
+include-labels:
+  - '*'
+
+references:
+  - main
+  - RB-*
+
+exclude-contributors:
+  - 'dependabot'
+
+exclude-labels:
+  - 'skip-changelog'

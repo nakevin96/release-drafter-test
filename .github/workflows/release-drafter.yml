@@ -27,5 +27,6 @@ jobs:
             tag: v${{ steps.extract_version.outputs.version }}
             version: ${{ steps.extract_version.outputs.version }}
             config-name: release-drafter-config.yml
+            disable-autolabeler: true
           env:
             GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
