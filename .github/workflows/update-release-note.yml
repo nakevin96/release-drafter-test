@@ -1,4 +1,4 @@
-name: Auto Release Notes
+name: Auto Generate Draft Release Notes
 
 on:
   pull_request:
@@ -8,7 +8,7 @@ on:
 
 jobs:
   update-release-notes:
-    if: github.event.pull_request.merged == true
+    if: ${{ github.event.pull_request.merged == true && !contains(github.event.pull_request.labels.*.name, 'skip-release-note') }}
     runs-on: ubuntu-latest
     
     steps:
@@ -16,7 +16,7 @@ jobs:
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
-          token: ${{ secrets.PAT }}
+          token: ${{ secrets.RELEASE_NOTE_PAT }}
 
       - name: Setup release environment
         id: setup
@@ -29,11 +29,10 @@ jobs:
           compare_branch: ${{ github.event.pull_request.head.ref }}
 
       - name: Update release notes
-        if: ${{ !contains(fromJson(steps.setup.outputs.labels), 'skip-release-note') }}
         uses: ./.github/actions/update-release-notes
         with:
           version: ${{ steps.setup.outputs.version }}
           category: ${{ steps.setup.outputs.category }}
           subcategory: ${{ steps.setup.outputs.subcategory }}
           content: ${{ steps.setup.outputs.content }}
-          github_token: ${{ secrets.PAT }}
+          github_token: ${{ secrets.RELEASE_NOTE_PAT }}

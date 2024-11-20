@@ -1,9 +1,9 @@
 name: 'Setup Release Environment'
-description: 'Prepares environment variables for release notes'
+description: 'Prepares environment variables for draft release notes'
 
 inputs:
   base_ref:
-    description: 'Base reference branch'
+    description: 'Base branch ref'
     required: true
   pr_title:
     description: 'Pull request title'
@@ -14,8 +14,8 @@ inputs:
   pr_labels:
     description: 'Pull request labels'
     required: true
-  compare_branch:
-    description: 'Compare branch'
+  compare_branch_ref:
+    description: 'Compare branch ref'
     required: true
 
 outputs:
@@ -41,11 +41,11 @@ runs:
     - id: set-vars
       shell: bash
       run: |
-        # Set version
+        # release note version setting
         VERSION=${BASE_REF#RB-}
         echo "version=$VERSION" >> $GITHUB_OUTPUT
         
-        # Determine category
+        # Check PR Labels and Set CATEGORY
         if echo '${{ inputs.pr_labels }}' | jq -e 'map(select(startswith("common-"))) | length > 0' > /dev/null; then
           CATEGORY="COMMON"
         elif echo '${{ inputs.pr_labels }}' | jq -e 'contains(["ntrance_web"])' > /dev/null; then
@@ -57,10 +57,10 @@ runs:
         fi
         echo "category=$CATEGORY" >> $GITHUB_OUTPUT
         
-        # Determine subcategory
-        if [[ "${{ inputs.compare_branch }}" == feat* ]]; then
+        # Check branch name and Set SUBCATEGORY
+        if [[ "${{ inputs.compare_branch_ref }}" == feat* ]]; then
           SUBCATEGORY="Changes"
-        elif [[ "${{ inputs.compare_branch }}" == fix* || "${{ inputs.compare_branch }}" == membersus* || "${{ inputs.compare_branch }}" == jira* ]]; then
+        elif [[ "${{ inputs.compare_branch_ref }}" == fix* || "${{ inputs.compare_branch_ref }}" == bts* || "${{ inputs.compare_branch_ref }}" == jira* ]]; then
           SUBCATEGORY="Bug fixes"
         else
           SUBCATEGORY="etc"

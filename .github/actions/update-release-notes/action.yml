@@ -1,4 +1,4 @@
-name: 'Update Release Notes'
+name: 'Update Draft Release Notes'
 description: 'Updates or creates release notes'
 
 inputs:
@@ -48,7 +48,7 @@ runs:
         release_id=$(gh release view ${{ inputs.version }} --json id -q .id 2>/dev/null || echo '')
         
         if [ -z "$release_id" ]; then
-          # Create new release notes from template
+          # Create new draft release notes
           echo "$TEMPLATE" > release_notes.md
           if [ "${{ inputs.category }}" == "ETC" ]; then
             sed -i "s/## ETC/## ETC\n${{ inputs.content }}/" release_notes.md
@@ -57,11 +57,10 @@ runs:
           fi
           gh release create ${{ inputs.version }} --draft --title "${{ inputs.version }}" --notes-file release_notes.md
         else
-          # Update existing release notes
+          # Update existing draft release note
           gh release view ${{ inputs.version }} --json body -q .body > release_notes.md
           
           if [ "${{ inputs.category }}" == "ETC" ]; then
-            # For ETC category, append after the ETC header
             awk -v content="${{ inputs.content }}" '
               /^## ETC/ {
                 print $0
@@ -71,7 +70,6 @@ runs:
               {print}
             ' release_notes.md > release_notes.tmp && mv release_notes.tmp release_notes.md
           else
-            # For other categories, append after the specific subcategory
             awk -v category="## ${{ inputs.category }}" \
                 -v subcategory="### ${{ inputs.subcategory }}" \
                 -v content="${{ inputs.content }}" '
