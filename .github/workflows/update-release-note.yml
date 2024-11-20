@@ -16,22 +16,28 @@ jobs:
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
+          token: ${{ secrets.PAT }}
 
-      - name: Get branch name
-        run: echo "BRANCH=${GITHUB_BASE_REF#RB-}" >> $GITHUB_ENV
+      - name: Get branch name and version
+        run: |
+          BRANCH=${GITHUB_BASE_REF#RB-}
+          echo "BRANCH=$BRANCH" >> $GITHUB_ENV
+          echo "VERSION=$BRANCH" >> $GITHUB_ENV
 
       - name: Get PR details
         run: |
           echo "PR_TITLE=${{ github.event.pull_request.title }}" >> $GITHUB_ENV
           echo "PR_NUMBER=${{ github.event.pull_request.number }}" >> $GITHUB_ENV
-          echo "PR_LABELS=${{ toJson(github.event.pull_request.labels.*.name) }}" >> $GITHUB_ENV
+          echo "PR_LABELS=$(echo '${{ toJson(github.event.pull_request.labels.*.name) }}' | jq -c)" >> $GITHUB_ENV
           echo "COMPARE_BRANCH=${{ github.event.pull_request.head.ref }}" >> $GITHUB_ENV
 
       - name: Update or create release notes
         env:
           GITHUB_TOKEN: ${{ secrets.PAT }}
         run: |
-          release_id=$(gh release view $BRANCH --json id -q .id 2>/dev/null || echo '')
+          set -e
+          
+          release_id=$(gh release view $VERSION --json id -q .id 2>/dev/null || echo '')
           
           # Check if PR should be skipped
           if echo "$PR_LABELS" | jq -e 'contains(["skip-release-note"])' > /dev/null; then
@@ -40,8 +46,7 @@ jobs:
           fi
           
           # Initialize template
-          template="# Release $BRANCH
-
+          template="
           ## WEB
           ### Changes
           ### Bug fixes
@@ -80,6 +85,8 @@ jobs:
             subcategory="etc"
           fi
           
+          echo "Category: $category, Subcategory: $subcategory"
+          
           # Prepare new content
           new_content="- $PR_TITLE (#$PR_NUMBER)"
           
@@ -90,13 +97,18 @@ jobs:
             else
               sed -i "/## $category/,/## / s/### $subcategory/### $subcategory\n$new_content/" release_notes.md
             fi
-            gh release create $BRANCH --draft --title "Release $BRANCH" --notes-file release_notes.md
+            # Remove empty sections
+            sed -i '/### Changes/{n;/### Bug fixes/d;}' release_notes.md
+            sed -i '/### Bug fixes/{n;/### etc/d;}' release_notes.md
+            sed -i '/### etc/{n;/^$/d;}' release_notes.md
+            gh release create $VERSION --draft --title "$VERSION" --notes-file release_notes.md
           else
-            gh release view $BRANCH --json body -q .body > release_notes.md
+            gh release view $VERSION --json body -q .body > release_notes.md
             if [ "$category" == "ETC" ]; then
               sed -i "/## ETC/a $new_content" release_notes.md
             else
               sed -i "/## $category/,/## / s/### $subcategory/### $subcategory\n$new_content/" release_notes.md
             fi
-            gh release edit $BRANCH --notes-file release_notes.md
+            gh release edit $VERSION --notes-file release_notes.md
           fi
+        continue-on-error: false
