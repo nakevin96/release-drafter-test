@@ -59,10 +59,37 @@ runs:
           
           if [ "${{ inputs.category }}" == "ETC" ]; then
             echo "Adding to ETC section..."
-            sed -i "s/## ETC/## ETC\n${{ inputs.content }}/" release_notes.md
+            awk -v content="${{ inputs.content }}" '
+                # "## ETC"를 찾으면 내용을 추가
+                $0 ~ /^## ETC/ {
+                    print
+                    print content
+                    next
+                }
+                # 기본적으로 현재 줄 출력
+                {print}
+            ' release_notes.md > release_notes.tmp && mv release_notes.tmp release_notes.md
           else
             echo "Adding to ${{ inputs.category }} / ${{ inputs.subcategory }} section..."
-            sed -i "/## ${{ inputs.category }}/,/## / s/### ${{ inputs.subcategory }}/### ${{ inputs.subcategory }}\n${{ inputs.content }}/" release_notes.md
+            awk -v category="## ${{ inputs.category }}" \
+                -v subcategory="### ${{ inputs.subcategory }}" \
+                -v content="${{ inputs.content }}" '
+                # 카테고리 시작을 찾으면 in_category 플래그를 설정
+                $0 ~ category {in_category=1; print; next}
+
+                # 다음 카테고리로 넘어가면 플래그를 해제
+                in_category && $0 ~ /^## / {in_category=0}
+
+                # 서브카테고리를 찾으면, 해당 서브카테고리 아래에 새 내용 추가
+                in_category && $0 ~ subcategory {
+                    print
+                    print content
+                    next
+                }
+
+                # 기본적으로 현재 줄 출력
+                {print}
+            ' release_notes.md > release_notes.tmp && mv release_notes.tmp release_notes.md
           fi
           
           echo "Creating new release..."
