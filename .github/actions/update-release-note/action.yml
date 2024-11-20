@@ -1,0 +1,92 @@
+name: 'Update Release Notes'
+description: 'Updates or creates release notes'
+
+inputs:
+  version:
+    description: 'Release version'
+    required: true
+  category:
+    description: 'Release category'
+    required: true
+  subcategory:
+    description: 'Release subcategory'
+    required: true
+  content:
+    description: 'Release content'
+    required: true
+  github_token:
+    description: 'GitHub token'
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - id: update-notes
+      shell: bash
+      run: |
+        set -e
+        
+        TEMPLATE="
+        ## WEB
+        ### Changes
+        ### Bug fixes
+        ### etc
+
+        ## ADMIN
+        ### Changes
+        ### Bug fixes
+        ### etc
+
+        ## COMMON
+        ### Changes
+        ### Bug fixes
+        ### etc
+
+        ## ETC
+        "
+        
+        release_id=$(gh release view ${{ inputs.version }} --json id -q .id 2>/dev/null || echo '')
+        
+        if [ -z "$release_id" ]; then
+          # Create new release notes from template
+          echo "$TEMPLATE" > release_notes.md
+          if [ "${{ inputs.category }}" == "ETC" ]; then
+            sed -i "s/## ETC/## ETC\n${{ inputs.content }}/" release_notes.md
+          else
+            sed -i "/## ${{ inputs.category }}/,/## / s/### ${{ inputs.subcategory }}/### ${{ inputs.subcategory }}\n${{ inputs.content }}/" release_notes.md
+          fi
+          gh release create ${{ inputs.version }} --draft --title "${{ inputs.version }}" --notes-file release_notes.md
+        else
+          # Update existing release notes
+          gh release view ${{ inputs.version }} --json body -q .body > release_notes.md
+          
+          if [ "${{ inputs.category }}" == "ETC" ]; then
+            # For ETC category, append after the ETC header
+            awk -v content="${{ inputs.content }}" '
+              /^## ETC/ {
+                print $0
+                print content
+                next
+              }
+              {print}
+            ' release_notes.md > release_notes.tmp && mv release_notes.tmp release_notes.md
+          else
+            # For other categories, append after the specific subcategory
+            awk -v category="## ${{ inputs.category }}" \
+                -v subcategory="### ${{ inputs.subcategory }}" \
+                -v content="${{ inputs.content }}" '
+              $0 ~ category {in_category=1; print; next}
+              in_category && $0 ~ /^## / {in_category=0}
+              in_category && $0 ~ subcategory {
+                print
+                print content
+                next
+              }
+              {print}
+            ' release_notes.md > release_notes.tmp && mv release_notes.tmp release_notes.md
+          fi
+          
+          gh release edit ${{ inputs.version }} --notes-file release_notes.md
+        fi
+      env:
+        GITHUB_TOKEN: ${{ inputs.github_token }}
