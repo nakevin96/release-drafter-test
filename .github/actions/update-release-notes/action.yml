@@ -1,4 +1,4 @@
-name: 'Update Draft Release Notes'
+name: 'Update Release Notes'
 description: 'Updates or creates release notes'
 
 inputs:
@@ -45,22 +45,41 @@ runs:
         ## ETC
         "
         
+        echo "Checking for existing release..."
         release_id=$(gh release view ${{ inputs.version }} --json id -q .id 2>/dev/null || echo '')
+        echo "Release ID: $release_id"
         
         if [ -z "$release_id" ]; then
-          # Create new draft release notes
+          echo "Creating new release notes..."
           echo "$TEMPLATE" > release_notes.md
-          if [ "${{ inputs.category }}" == "ETC" ]; then
-            sed -i "s/## ETC/## ETC\n${{ inputs.content }}/" release_notes.md
-          else
-            sed -i "/## ${{ inputs.category }}/,/## / s/### ${{ inputs.subcategory }}/### ${{ inputs.subcategory }}\n${{ inputs.content }}/" release_notes.md
-          fi
-          gh release create ${{ inputs.version }} --draft --title "${{ inputs.version }}" --notes-file release_notes.md
-        else
-          # Update existing draft release note
-          gh release view ${{ inputs.version }} --json body -q .body > release_notes.md
+          
+          echo "Category: ${{ inputs.category }}"
+          echo "Subcategory: ${{ inputs.subcategory }}"
+          echo "Content to add: ${{ inputs.content }}"
           
           if [ "${{ inputs.category }}" == "ETC" ]; then
+            echo "Adding to ETC section..."
+            sed -i "s/## ETC/## ETC\n${{ inputs.content }}/" release_notes.md
+          else
+            echo "Adding to ${{ inputs.category }} / ${{ inputs.subcategory }} section..."
+            sed -i "/## ${{ inputs.category }}/,/## / s/### ${{ inputs.subcategory }}/### ${{ inputs.subcategory }}\n${{ inputs.content }}/" release_notes.md
+          fi
+          
+          echo "Creating new release..."
+          gh release create ${{ inputs.version }} --draft --title "${{ inputs.version }}" --notes-file release_notes.md
+        else
+          echo "Updating existing release notes..."
+          gh release view ${{ inputs.version }} --json body -q .body > release_notes.md
+          
+          echo "Current release notes content:"
+          cat release_notes.md
+          
+          echo "Category: ${{ inputs.category }}"
+          echo "Subcategory: ${{ inputs.subcategory }}"
+          echo "Content to add: ${{ inputs.content }}"
+          
+          if [ "${{ inputs.category }}" == "ETC" ]; then
+            echo "Adding to ETC section..."
             awk -v content="${{ inputs.content }}" '
               /^## ETC/ {
                 print $0
@@ -70,6 +89,7 @@ runs:
               {print}
             ' release_notes.md > release_notes.tmp && mv release_notes.tmp release_notes.md
           else
+            echo "Adding to ${{ inputs.category }} / ${{ inputs.subcategory }} section..."
             awk -v category="## ${{ inputs.category }}" \
                 -v subcategory="### ${{ inputs.subcategory }}" \
                 -v content="${{ inputs.content }}" '
@@ -84,6 +104,10 @@ runs:
             ' release_notes.md > release_notes.tmp && mv release_notes.tmp release_notes.md
           fi
           
+          echo "Updated release notes content:"
+          cat release_notes.md
+          
+          echo "Updating release..."
           gh release edit ${{ inputs.version }} --notes-file release_notes.md
         fi
       env:

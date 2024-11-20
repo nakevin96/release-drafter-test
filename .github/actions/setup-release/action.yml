@@ -14,7 +14,7 @@ inputs:
   pr_labels:
     description: 'Pull request labels'
     required: true
-  compare_branch_ref:
+  compare_branch:
     description: 'Compare branch ref'
     required: true
 
@@ -41,34 +41,46 @@ runs:
     - id: set-vars
       shell: bash
       run: |
-        # release note version setting
+        # Set version
         VERSION=${BASE_REF#RB-}
         echo "version=$VERSION" >> $GITHUB_OUTPUT
         
-        # Check PR Labels and Set CATEGORY
+        # Debug logging
+        echo "Input PR Labels: ${{ inputs.pr_labels }}"
+        echo "Checking common labels..."
+        echo '${{ inputs.pr_labels }}' | jq 'map(select(startswith("common-")))'
+        
+        # Determine category with detailed logging
         if echo '${{ inputs.pr_labels }}' | jq -e 'map(select(startswith("common-"))) | length > 0' > /dev/null; then
+          echo "Found common- label"
           CATEGORY="COMMON"
         elif echo '${{ inputs.pr_labels }}' | jq -e 'contains(["ntrance_web"])' > /dev/null; then
+          echo "Found ntrance_web label"
           CATEGORY="WEB"
         elif echo '${{ inputs.pr_labels }}' | jq -e 'contains(["ntrance_admin"])' > /dev/null; then
+          echo "Found ntrance_admin label"
           CATEGORY="ADMIN"
         else
+          echo "No matching category labels found, using ETC"
           CATEGORY="ETC"
         fi
+        echo "Selected Category: $CATEGORY"
         echo "category=$CATEGORY" >> $GITHUB_OUTPUT
         
-        # Check branch name and Set SUBCATEGORY
-        if [[ "${{ inputs.compare_branch_ref }}" == feat* ]]; then
+        # Determine subcategory with logging
+        if [[ "${{ inputs.compare_branch }}" == feat* ]]; then
           SUBCATEGORY="Changes"
-        elif [[ "${{ inputs.compare_branch_ref }}" == fix* || "${{ inputs.compare_branch_ref }}" == bts* || "${{ inputs.compare_branch_ref }}" == jira* ]]; then
+        elif [[ "${{ inputs.compare_branch }}" == fix* || "${{ inputs.compare_branch }}" == membersus* || "${{ inputs.compare_branch }}" == jira* ]]; then
           SUBCATEGORY="Bug fixes"
         else
           SUBCATEGORY="etc"
         fi
+        echo "Selected Subcategory: $SUBCATEGORY"
         echo "subcategory=$SUBCATEGORY" >> $GITHUB_OUTPUT
         
-        # Set content
+        # Set content with logging
         CONTENT="- ${{ inputs.pr_title }} (#${{ inputs.pr_number }})"
+        echo "Generated Content: $CONTENT"
         echo "content=$CONTENT" >> $GITHUB_OUTPUT
       env:
         BASE_REF: ${{ inputs.base_ref }}

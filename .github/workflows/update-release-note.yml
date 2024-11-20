@@ -26,7 +26,7 @@ jobs:
           pr_title: ${{ github.event.pull_request.title }}
           pr_number: ${{ github.event.pull_request.number }}
           pr_labels: ${{ toJson(github.event.pull_request.labels.*.name) }}
-          compare_branch_ref: ${{ github.event.pull_request.head.ref }}
+          compare_branch: ${{ github.event.pull_request.head.ref }}
 
       - name: Update release notes
         uses: ./.github/actions/update-release-notes
