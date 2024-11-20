@@ -10,32 +10,28 @@ jobs:
   update-release-notes:
     if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
+    
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
 
       - name: Get branch name
-        id: branch-name
-        run: echo "::set-output name=branch::${GITHUB_BASE_REF#RB-}"
+        run: echo "BRANCH=${GITHUB_BASE_REF#RB-}" >> $GITHUB_ENV
 
       - name: Get PR details
-        id: pr-details
         run: |
-          echo "::set-output name=title::${{ github.event.pull_request.title }}"
-          echo "::set-output name=number::${{ github.event.pull_request.number }}"
-          echo "::set-output name=labels::${{ toJson(github.event.pull_request.labels.*.name) }}"
-          echo "::set-output name=compare_branch::${{ github.event.pull_request.head.ref }}"
+          echo "PR_TITLE=${{ github.event.pull_request.title }}" >> $GITHUB_ENV
+          echo "PR_NUMBER=${{ github.event.pull_request.number }}" >> $GITHUB_ENV
+          echo "PR_LABELS=${{ toJson(github.event.pull_request.labels.*.name) }}" >> $GITHUB_ENV
+          echo "COMPARE_BRANCH=${{ github.event.pull_request.head.ref }}" >> $GITHUB_ENV
 
       - name: Update or create release notes
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VERSION: ${{ steps.branch-name.outputs.branch }}
-          PR_TITLE: ${{ steps.pr-details.outputs.title }}
-          PR_NUMBER: ${{ steps.pr-details.outputs.number }}
-          PR_LABELS: ${{ steps.pr-details.outputs.labels }}
-          COMPARE_BRANCH: ${{ steps.pr-details.outputs.compare_branch }}
+          GITHUB_TOKEN: ${{ secrets.PAT }}
         run: |
-          release_id=$(gh release view $VERSION --json id -q .id || echo '')
+          release_id=$(gh release view $BRANCH --json id -q .id 2>/dev/null || echo '')
           
           # Check if PR should be skipped
           if echo "$PR_LABELS" | jq -e 'contains(["skip-release-note"])' > /dev/null; then
@@ -44,7 +40,7 @@ jobs:
           fi
           
           # Initialize template
-          template="# Release $VERSION
+          template="# Release $BRANCH
 
           ## WEB
           ### Changes
@@ -70,53 +66,37 @@ jobs:
           
           if echo "$PR_LABELS" | jq -e 'map(select(startswith("common-"))) | length > 0' > /dev/null; then
             category="COMMON"
-            if [[ "$COMPARE_BRANCH" == feat* ]]; then
-              subcategory="Changes"
-            elif [[ "$COMPARE_BRANCH" == fix* || "$COMPARE_BRANCH" == membersus* || "$COMPARE_BRANCH" == jira* ]]; then
-              subcategory="Bug fixes"
-            else
-              subcategory="etc"
-            fi
           elif echo "$PR_LABELS" | jq -e 'contains(["ntrance_web"])' > /dev/null; then
             category="WEB"
-            if [[ "$COMPARE_BRANCH" == feat* ]]; then
-              subcategory="Changes"
-            elif [[ "$COMPARE_BRANCH" == fix* || "$COMPARE_BRANCH" == membersus* || "$COMPARE_BRANCH" == jira* ]]; then
-              subcategory="Bug fixes"
-            else
-              subcategory="etc"
-            fi
           elif echo "$PR_LABELS" | jq -e 'contains(["ntrance_admin"])' > /dev/null; then
             category="ADMIN"
-            if [[ "$COMPARE_BRANCH" == feat* ]]; then
-              subcategory="Changes"
-            elif [[ "$COMPARE_BRANCH" == fix* || "$COMPARE_BRANCH" == membersus* || "$COMPARE_BRANCH" == jira* ]]; then
-              subcategory="Bug fixes"
-            else
-              subcategory="etc"
-            fi
+          fi
+
+          if [[ "$COMPARE_BRANCH" == feat* ]]; then
+            subcategory="Changes"
+          elif [[ "$COMPARE_BRANCH" == fix* || "$COMPARE_BRANCH" == membersus* || "$COMPARE_BRANCH" == jira* ]]; then
+            subcategory="Bug fixes"
+          else
+            subcategory="etc"
           fi
           
           # Prepare new content
           new_content="- $PR_TITLE (#$PR_NUMBER)"
           
           if [ -z "$release_id" ]; then
-            # Create new release with template
             echo "$template" > release_notes.md
-            # Add new content to appropriate section
             if [ "$category" == "ETC" ]; then
               sed -i "s/## ETC/## ETC\n$new_content/" release_notes.md
             else
               sed -i "/## $category/,/## / s/### $subcategory/### $subcategory\n$new_content/" release_notes.md
             fi
-            gh release create $VERSION --draft --title "Release $VERSION" --notes-file release_notes.md
+            gh release create $BRANCH --draft --title "Release $BRANCH" --notes-file release_notes.md
           else
-            # Update existing release
-            gh release view $VERSION --json body -q .body > release_notes.md
+            gh release view $BRANCH --json body -q .body > release_notes.md
             if [ "$category" == "ETC" ]; then
               sed -i "/## ETC/a $new_content" release_notes.md
             else
               sed -i "/## $category/,/## / s/### $subcategory/### $subcategory\n$new_content/" release_notes.md
             fi
-            gh release edit $VERSION --notes-file release_notes.md
+            gh release edit $BRANCH --notes-file release_notes.md
           fi
