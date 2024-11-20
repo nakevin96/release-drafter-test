@@ -29,17 +29,17 @@ runs:
         TEMPLATE="
         ## WEB
         ### Changes
-        ### Bug fixes
+        ### Fixes
         ### etc
 
         ## ADMIN
         ### Changes
-        ### Bug fixes
+        ### Fixes
         ### etc
 
         ## COMMON
         ### Changes
-        ### Bug fixes
+        ### Fixes
         ### etc
 
         ## ETC

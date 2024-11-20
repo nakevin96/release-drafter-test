@@ -71,7 +71,7 @@ runs:
         if [[ "${{ inputs.compare_branch }}" == feat* ]]; then
           SUBCATEGORY="Changes"
         elif [[ "${{ inputs.compare_branch }}" == fix* || "${{ inputs.compare_branch }}" == membersus* || "${{ inputs.compare_branch }}" == jira* ]]; then
-          SUBCATEGORY="Bug fixes"
+          SUBCATEGORY="Fixes"
         else
           SUBCATEGORY="etc"
         fi
